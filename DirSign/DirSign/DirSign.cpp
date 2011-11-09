@@ -1,20 +1,20 @@
 //____________________________________________________________________________________________
 //
 //                 
-//             SIGNATURE DE REPERTOIRE
+//     fr      SIGNATURE DE REPERTOIRE
 //             (pour détecter une modification dans un répertoire sans mettre en place une surveillance avec un file system watcher)
 //
 //             - Signature d'une arborescence de répertoires
 //               (calculée d'après les tailles, dates et quantité de répertoires et fichiers)
 //             - Contrôle de signature d'une arborescence de répertoires
 //			   
-//             DIRECTORY SIGNATURE (to detect an update in a directory tree without filesystem watcher)
-//             - Sign a directory tre
+//     en      DIRECTORY SIGNATURE (to detect an update in a directory tree without filesystem watcher)
+//             - Sign a directory tree
 //               (calculated on number, size and last update date of dirs and files
 //             - Check a signature againts a directory tree
 //
 //
-//             Eric Fullenbaum - Octobre 2004 - Novembre 2011
+//             Eric Fullenbaum - Octobre 2004 - Novembre 2011 - V1.1
 //____________________________________________________________________________________________
 
 
@@ -34,14 +34,16 @@
 
 //_______ Error
 
-#define RC_NB_PARAMS           1
+#define RC_DISPLAYDOC          2
+#define RC_DISPLAYDOC_MSG      L"Display doc"
+#define RC_NB_PARAMS           3
 #define RC_NB_PARAMS_MSG       L"Incorrect number of parameters"
-#define RC_BADOPTION           2
+#define RC_BADOPTION           4
 #define RC_BADOPTION_MSG       L"Option unknown"
-#define RC_DIRNOTFOUND         3
+#define RC_DIRNOTFOUND         5
 #define RC_DIRNOTFOUND_MSG     L"Directory not found"
-#define RC_BADSIGNATURE        4
-#define RC_BADSIGNATURE_MSG    L"Bad signature (not an integer)"
+#define RC_BADSIGNATURE        6
+#define RC_BADSIGNATURE_MSG    L"Bad signature (not a number)"
 
 //_______ Options
 
@@ -75,10 +77,9 @@ void usage(_TCHAR *szProgName)
 	printf("\n       with intermediate counters.");
 	printf("\n       C:\\> %s -sign c:\\temp", PROGNAME);
 	printf("\n       Outputs the signature of c:\\temp");
-	printf("\n       Signature is also returned in errorlevel but overflow is possible.");
 	printf("\n       C:\\> %s -check 65412345 c:\\temp", PROGNAME);
 	printf("\n       Outputs 1 if the signature of the directory is OK or 0 if not");
-	printf("\n       The result is also returned in errorlevel.");
+	printf("\n       The result (0 or 1) is also returned in errorlevel.");
 	printf("\n");
 	printf("\n%s Eric Fullenbaum - 2004 - 2011", PROGNAME);
 	printf(LINE);
@@ -91,11 +92,11 @@ typedef struct _finddata_t _finddata_t_struct;
 //_______ Counters
 struct Counters
 {
-	unsigned long ulNumberOfDirectories;
-	unsigned long ulNumberOfFiles      ;
-	unsigned long ulFilesTotalSize     ;
-	unsigned long ulSumOfDirDates      ;
-	unsigned long ulSumOfFiledates     ;
+	long long ulNumberOfDirectories;
+	long long ulNumberOfFiles      ;
+	long long ulFilesTotalSize     ;
+	long long ulSumOfDirDates      ;
+	long long ulSumOfFiledates     ;
 };
 
 //_______ True if uiAttrib is a directory attrib
@@ -107,7 +108,7 @@ unsigned short boolDirAttrib(unsigned int uiAttrib)
 }
 
 // Signature is calculated on file sizes, dates, number of files, number of directories and directories dates
-unsigned long signature(Counters *counters)
+long long signature(Counters *counters)
 {
 	return 
 		counters->ulNumberOfDirectories+
@@ -133,7 +134,7 @@ void trace(_TCHAR * szPath, Counters *counters)
 	}
 	else
 	{
-		wcscpy(szPreviousPath, szPath);
+		wcscpy_s(szPreviousPath, FILE_NAME_SIZE, szPath);
 		wprintf(L"%s\n#d:%u #f:%u s:%u fdates:%u ddates:%u sign:%u\n",
 			szPath,
 			counters->ulNumberOfDirectories,
@@ -175,8 +176,8 @@ int enumDirectoriesAndProcessEach(_TCHAR *path, int flRecurse, int boolDisplay, 
 	rc=0;
 
 	// Start enum subdir
-	wcscpy(dirSpec, path);
-	wcscat(dirSpec, L"\\*");
+	wcscpy_s(dirSpec, FILE_NAME_SIZE, path);
+	wcscat_s(dirSpec, FILE_NAME_SIZE, L"\\*");
 
 	handle = _wfindfirst(dirSpec, &fileinfo);
 	if (handle!=-1L) {
@@ -189,9 +190,9 @@ int enumDirectoriesAndProcessEach(_TCHAR *path, int flRecurse, int boolDisplay, 
 
 			// Process first subdir
 			if (boolDirAttrib(fileinfo.attrib)) {
-				wcscpy(dirSpec, path);
-				wcscat(dirSpec, L"\\");
-				wcscat(dirSpec, fileinfo.name);
+				wcscpy_s(dirSpec, FILE_NAME_SIZE, path);
+				wcscat_s(dirSpec, FILE_NAME_SIZE, L"\\");
+				wcscat_s(dirSpec, FILE_NAME_SIZE, fileinfo.name);
 				processDir(dirSpec, boolDisplay, &fileinfo, counters);
 				if (flRecurse==FLAG_RECURSE)
 					enumDirectoriesAndProcessEach(dirSpec, FLAG_RECURSE, boolDisplay, counters);
@@ -204,9 +205,9 @@ int enumDirectoriesAndProcessEach(_TCHAR *path, int flRecurse, int boolDisplay, 
 				// Process all other subdirs
 				if (boolNotCurrentDir) {
 					if (boolDirAttrib(fileinfo.attrib)) {
-						wcscpy(dirSpec, path);
-						wcscat(dirSpec, L"\\");
-						wcscat(dirSpec, fileinfo.name);
+						wcscpy_s(dirSpec, FILE_NAME_SIZE, path);
+						wcscat_s(dirSpec, FILE_NAME_SIZE, L"\\");
+						wcscat_s(dirSpec, FILE_NAME_SIZE, fileinfo.name);
 						processDir(dirSpec, boolDisplay, &fileinfo, counters);
 						if (flRecurse==FLAG_RECURSE)
 							enumDirectoriesAndProcessEach(dirSpec, FLAG_RECURSE, boolDisplay, counters);
@@ -223,11 +224,11 @@ int enumDirectoriesAndProcessEach(_TCHAR *path, int flRecurse, int boolDisplay, 
 	return rc;
 }
 
-unsigned long getDirDate(char *szDirPath)
+long long getDirDate(char *szDirPath)
 {
 	struct _finddata_t fileinfo;
 	long   handle;
-	int    rc;
+	long long rc;
 
 	rc=0;
 
@@ -244,7 +245,7 @@ unsigned long getDirDate(char *szDirPath)
 unsigned long _tmain(int argc, _TCHAR* argv[])
 {
 	int rc;
-	unsigned long rv;
+	long long rv=0;
 
 	rc=0;
 
@@ -262,6 +263,7 @@ unsigned long _tmain(int argc, _TCHAR* argv[])
 	case 1:
 		// No params, display doc
 		usage(argv[0]);
+		rc=RC_DISPLAYDOC;
 		break;
 	case 2:
 		// One param : display all dir
@@ -288,8 +290,8 @@ unsigned long _tmain(int argc, _TCHAR* argv[])
 		// Three parameters :  check
 		if (_wcsicmp(argv[1], OPT_CHECK)==0)
 		{
-			unsigned long ulSignature=_wtol(argv[2]);
-			if (ulSignature==0)
+			long long llSignature=_wtoi64(argv[2]);
+			if (llSignature==0)
 				rc=RC_BADSIGNATURE;
 			else
 			{
@@ -299,7 +301,9 @@ unsigned long _tmain(int argc, _TCHAR* argv[])
 				else
 				{
 					rv=0;
-					if (ulSignature==signature(&counters)) rv=1;
+					long long sign=signature(&counters);
+					if (llSignature==signature(&counters))
+						rv=1;
 				}
 			}
 			break;
@@ -318,6 +322,6 @@ unsigned long _tmain(int argc, _TCHAR* argv[])
 	if ((rc==RC_DIRNOTFOUND)&&(argc==3)) { wprintf(L"%s %s\n", RC_DIRNOTFOUND_MSG, argv[2]); }
 	if ((rc==RC_DIRNOTFOUND)&&(argc==4)) { wprintf(L"%s %s\n", RC_DIRNOTFOUND_MSG, argv[3]); }
 	if ((rc==RC_BADSIGNATURE)&&(argc==4)) { wprintf(L"%s %s\n", RC_BADSIGNATURE_MSG, argv[2]); }
-	if ((argc!=1)&&(rc==0)) wprintf(L"%u\n", rv);
+	if ((argc!=1)&&(rc==0)) wprintf(L"%llu\n", rv);
 	return rc;
 }
