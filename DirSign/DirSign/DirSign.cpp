@@ -124,7 +124,7 @@ void trace(_TCHAR * szPath, Counters *counters)
 {
 	if (_wcsicmp(szPath, szPreviousPath)==0)
 	{
-		wprintf(L"#d:%u #f:%u s:%u fdates:%u ddates:%u sign:%u\n",
+		wprintf(L"#d:%llu #f:%llu s:%llu fdates:%llu ddates:%llu sign:%llu\n",
 			counters->ulNumberOfDirectories,
 			counters->ulNumberOfFiles,
 			counters->ulFilesTotalSize,
@@ -135,7 +135,7 @@ void trace(_TCHAR * szPath, Counters *counters)
 	else
 	{
 		wcscpy_s(szPreviousPath, FILE_NAME_SIZE, szPath);
-		wprintf(L"%s\n#d:%u #f:%u s:%u fdates:%u ddates:%u sign:%u\n",
+		wprintf(L"%s\n#d:%llu #f:%llu s:%llu fdates:%llu ddates:%llu sign:%llu\n",
 			szPath,
 			counters->ulNumberOfDirectories,
 			counters->ulNumberOfFiles,
